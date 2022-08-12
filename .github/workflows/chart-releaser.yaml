@@ -8,7 +8,7 @@ on:
     branches:
       - main
     paths:
-      - "charts/**"
+      - "charts/*"
 
 jobs:
   release:
@@ -93,41 +93,3 @@ jobs:
         env:
           CR_TOKEN: "${{ steps.generate-token.outputs.token }}"
           CR_SKIP_EXISTING: "true"
-
-  generate-summary:
-    name: Auto-generate charts summary
-    runs-on: ubuntu-20.04
-    needs:
-      - release
-    steps:
-      - name: Generate Token
-        uses: tibdex/github-app-token@v1
-        id: generate-token
-        with:
-          app_id: ${{ secrets.KUBE_MEDIA_APP_ID }}
-          private_key: ${{ secrets.KUBE_MEDIA_APP_PRIVATE_KEY }}
-
-      - name: Checkout
-        uses: actions/checkout@v3
-        with:
-          token: ${{ steps.generate-token.outputs.token }}
-          ref: master
-          fetch-depth: 0
-
-      - name: Install yq
-        uses: chrisdickinson/setup-yq@latest
-        with:
-          yq-version: v4.9.3
-
-      - name: Run script
-        run: |
-          ./hack/gen-chart-summary.sh
-      - name: Create Commit
-        uses: stefanzweifel/git-auto-commit-action@v4
-        with:
-          push_options: --force
-          commit_message: Auto-generate chart summary [no ci]
-          commit_user_name: kube-media[bot]
-          commit_user_email: kube-media[bot]@users.noreply.github.com
-          commit_author: kube-media[bot] <k8s-at-home[bot]@users.noreply.github.com>
-          file_pattern: charts/README.md
