@@ -1,0 +1,212 @@
+{{ if .Values.plex.enabled }}
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ template "kube-media.name" . }}-plex
+
+data:
+  TZ: "{{ .Values.general.timezone }}"
+  {{- with .Values.plex.config }}
+  {{- range $key, $value := . }}
+  {{ $key }}: {{ $value }}
+  {{- end }}
+  {{- end }}
+---
+### DEPLOYMENT
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: plex
+  labels:
+    {{- include "kube-media.labels" . | nindent 4 }}
+spec:
+  replicas: {{ .Values.plex.replicaCount }}
+  selector:
+    matchLabels:
+      {{- include "kube-media.selectorLabels" . | nindent 6 }}
+  strategy:
+    type: Recreate
+  template:
+    metadata:
+      labels:
+        {{- include "kube-media.selectorLabels" . | nindent 8 }}
+        app: plex
+      annotations:
+        kube-plex/container-name: "kube-plex-init"
+        kube-plex/pms-addr: "plex:{{ .Values.plex.service.port }}"
+        kube-plex/pms-container-name: "plex"
+        {{- if .Values.plex.kubePlex.loglevel }}
+        kube-plex/loglevel: "{{ .Values.plex.kubePlex.loglevel }}"
+        {{- end }}
+        {{- if .Values.plex.kubePlex.resources.requests }}
+        kube-plex/resources-requests: {{ toJson .Values.plex.kubePlex.resources.requests | quote }}
+        {{- end}}
+        {{- if .Values.plex.kubePlex.resources.limits }}
+        kube-plex/resources-limits: {{ toJson .Values.plex.kubePlex.resources.limits | quote }}
+        {{- end}}
+        {{- if .Values.plex.kubePlex.mounts }}
+        kube-plex/mounts: {{ .Values.plex.kubePlex.mounts }}
+        {{- end}}
+    spec:
+      serviceAccountName: {{ template "kube-media.serviceAccountName" . }}
+      volumes:
+        {{- if not .Values.general.storage.customVolume }}
+        - name: media-volume
+          persistentVolumeClaim:
+            claimName: {{ .Values.general.storage.pvcName }}
+        {{- else }}
+        - name: media-volume
+          {{- toYaml .Values.general.storage.volumes | nindent 10 }}
+        {{- end }}
+        - name: shared
+          emptyDir: { }
+        {{- with .Values.plex.extraVolumes }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
+
+      {{- if .Values.plex.kubePlex.enabled }}
+      initContainers:
+        - name: kube-plex-init
+          image: "{{ .Values.plex.kubePlex.image.repository }}:{{ .Values.plex.kubePlex.image.tag }}"
+          imagePullPolicy: {{ .Values.plex.kubePlex.image.pullPolicy }}
+          command:
+            - cp
+            - /kube-plex
+            - /shared/kube-plex
+          volumeMounts:
+            - name: shared
+              mountPath: /shared
+      {{- end }}
+      containers:
+        - name: plex
+          envFrom:
+            - configMapRef:
+                name: {{ template "kube-media.name" . }}-plex
+          env:
+            # kube-plex env vars
+            - name: POD_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.name
+            - name: POD_NAMESPACE
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.namespace
+          image: "{{ .Values.plex.image.repository }}:{{ .Values.plex.image.tag }}"
+          imagePullPolicy: {{ .Values.plex.image.pullPolicy }}
+          readinessProbe:
+            tcpSocket:
+              port: {{ .Values.plex.container.port }}
+            initialDelaySeconds: 20
+            periodSeconds: 15
+          ports:
+            - name: plex-port
+              containerPort: {{ .Values.plex.container.port }}
+              protocol: TCP
+          volumeMounts:
+            - name: media-volume
+              mountPath: "/config"
+              subPath: "{{ .Values.general.storage.subPaths.config }}/plex"
+            - name: media-volume
+              mountPath: "/media"
+              subPath: "media"
+            - name: shared
+              mountPath: "/shared"
+            - name: media-volume
+              mountPath: "/transcode"
+              subPath: "transcode"
+            {{ with .Values.plex.extraMounts }}
+            {{- toYaml . | nindent 12 }}
+            {{ end }}
+          {{- with .Values.plex.resources }}
+          resources:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+          {{- if .Values.plex.kubePlex.enabled }}
+          lifecycle:
+            postStart:
+              exec:
+                command:
+                  - bash
+                  - -c
+                  - |
+                    #!/bin/bash
+                    set -e
+                    mv '/usr/lib/plexmediaserver/Plex Transcoder' '/usr/lib/plexmediaserver/Plex Transcoder.orig'
+                    cp /shared/kube-plex '/usr/lib/plexmediaserver/Plex Transcoder'
+          {{- end }}
+      {{- with .Values.general.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: plex
+  labels:
+    {{- include "kube-media.labels" . | nindent 4 }}
+spec:
+  type: {{ .Values.plex.service.type }}
+  ports:
+    - port: {{ .Values.plex.service.port }}
+      targetPort: {{ .Values.plex.container.port }}
+      protocol: TCP
+      name: plex-port
+{{ if eq .Values.plex.service.type "NodePort" }}
+      nodePort: {{ .Values.plex.service.nodePort }}
+{{ end }}
+  selector:
+    app: plex
+
+---
+{{ if .Values.plex.service.extraLBService }}
+apiVersion: v1
+kind: Service
+metadata:
+  name: plex-lb
+  labels:
+    {{- include "kube-media.labels" . | nindent 4 }}
+spec:
+  type: LoadBalancer
+  ports:
+    - port: {{ .Values.plex.service.port }}
+      targetPort: {{ .Values.plex.container.port }}
+      protocol: TCP
+      name: plex-port
+  selector:
+    app: plex
+{{ end }}
+---
+{{ if .Values.plex.ingress.enabled }}
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: plex
+  labels:
+    {{- include "kube-media.labels" . | nindent 4 }}
+  {{- with .Values.plex.ingress.annotations }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+spec:
+{{- if .Values.plex.ingress.tls.enabled }}
+  tls:
+    - hosts:
+        - {{ .Values.general.plex_ingress_host | quote }}
+      secretName: {{ .Values.plex.ingress.tls.secretName }}
+{{ end }}
+  rules:
+    - host: {{ .Values.general.plex_ingress_host | quote }}
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: plex
+                port:
+                  number: {{ .Values.plex.service.port }}
+{{ end }}
+{{ end }}     

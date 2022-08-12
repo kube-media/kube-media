@@ -1,0 +1,307 @@
+{{- if .Values.transmission.enabled -}}
+---
+apiVersion: v1
+data:
+  transmission.sh: |
+    #!/bin/bash
+    if [ ! -f /config/settings.json ]; then
+      cp -n /transmission/settings.json /config/settings.json
+    fi
+  settings.json: |
+    {
+        "alt-speed-down": 50,
+        "alt-speed-enabled": false,
+        "alt-speed-time-begin": 540,
+        "alt-speed-time-day": 127,
+        "alt-speed-time-enabled": false,
+        "alt-speed-time-end": 1020,
+        "alt-speed-up": 50,
+        "bind-address-ipv4": "0.0.0.0",
+        "bind-address-ipv6": "::",
+        "blocklist-enabled": false,
+        "blocklist-url": "http://www.example.com/blocklist",
+        "cache-size-mb": 4,
+        "dht-enabled": true,
+        "download-dir": "/{{ .Values.general.storage.subPaths.downloads }}/{{ .Values.general.storage.subPaths.transmission }}/complete",
+        "download-queue-enabled": true,
+        "download-queue-size": 5,
+        "encryption": 1,
+        "idle-seeding-limit": 30,
+        "idle-seeding-limit-enabled": false,
+        "incomplete-dir": "/{{ .Values.general.storage.subPaths.downloads }}/{{ .Values.general.storage.subPaths.transmission }}/incomplete",
+        "incomplete-dir-enabled": true,
+        "lpd-enabled": false,
+        "message-level": 2,
+        "peer-congestion-algorithm": "",
+        "peer-id-ttl-hours": 6,
+        "peer-limit-global": 200,
+        "peer-limit-per-torrent": 50,
+        "peer-port": {{ .Values.transmission.service.peer.port }},
+        "peer-port-random-high": 65535,
+        "peer-port-random-low": 49152,
+        "peer-port-random-on-start": false,
+        "peer-socket-tos": "default",
+        "pex-enabled": true,
+        "port-forwarding-enabled": true,
+        "preallocation": 1,
+        "prefetch-enabled": true,
+        "queue-stalled-enabled": true,
+        "queue-stalled-minutes": 30,
+        "ratio-limit": 2,
+        "ratio-limit-enabled": false,
+        "rename-partial-files": true,
+        "rpc-authentication-required": {{ .Values.transmission.config.auth.enabled }},
+        "rpc-bind-address": "0.0.0.0",
+        "rpc-enabled": true,
+        "rpc-host-whitelist": "",
+        "rpc-host-whitelist-enabled": false,
+        "rpc-password": {{ .Values.transmission.config.auth.password | quote }} ,
+        "rpc-port": 9091,
+        "rpc-url": "{{ .Values.transmission.ingress.path }}/",
+        "rpc-username": {{ .Values.transmission.config.auth.username | quote }},
+        "rpc-whitelist": "127.0.0.1",
+        "rpc-whitelist-enabled": false,
+        "scrape-paused-torrents-enabled": true,
+        "script-torrent-done-enabled": false,
+        "script-torrent-done-filename": "",
+        "seed-queue-enabled": false,
+        "seed-queue-size": 10,
+        "speed-limit-down": 100,
+        "speed-limit-down-enabled": false,
+        "speed-limit-up": 100,
+        "speed-limit-up-enabled": false,
+        "start-added-torrents": true,
+        "trash-original-torrent-files": false,
+        "umask": 2,
+        "upload-slots-per-torrent": 14,
+        "utp-enabled": false,
+        "watch-dir": "/watch",
+        "watch-dir-enabled": true
+    }
+kind: ConfigMap
+metadata:
+  name: {{ template "kube-media.name" . }}-transmission
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: transmission
+  labels:
+    {{- include "kube-media.labels" . | nindent 4 }}
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      {{- include "kube-media.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "kube-media.selectorLabels" . | nindent 8 }}
+        app: transmission
+    spec:
+      initContainers:
+        - name: config-transmission
+          image: docker.io/ubuntu:groovy
+          command: ["/transmission/transmission.sh"]
+          volumeMounts:
+            - mountPath: /transmission
+              name: init-files-transmission 
+            - mountPath: /config
+              name: media-volume
+              subPath: "{{ .Values.general.storage.subPaths.config }}/transmission"
+          securityContext:
+            runAsUser: {{ .Values.general.puid }}
+            runAsGroup: {{ .Values.general.pgid }}
+      containers:
+        - name: transmission
+          env:
+            - name: PGID
+              value: "{{ .Values.general.pgid }}"
+            - name: PUID
+              value: "{{ .Values.general.puid }}"
+          image: "{{ .Values.transmission.image.repository }}:{{ .Values.transmission.image.tag }}"
+          imagePullPolicy: {{ .Values.transmission.image.pullPolicy }}
+          readinessProbe:
+            tcpSocket:
+              port: {{ .Values.transmission.container.port.utp }}
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          ports:
+            - name: trans-port
+              containerPort: {{ .Values.transmission.container.port.utp }}
+              protocol: TCP
+            - name: trans-peer-tcp
+              containerPort: {{ .Values.transmission.container.port.peer }}
+              protocol: TCP
+            - name: trans-peer-udp
+              containerPort: {{ .Values.transmission.container.port.peer }}
+              protocol: UDP
+          volumeMounts: 
+            - name: media-volume
+              mountPath: "/config"
+              subPath: "{{ .Values.general.storage.subPaths.config }}/transmission"
+            - name: media-volume
+              mountPath: "/downloads"
+              subPath: "{{ .Values.general.storage.subPaths.downloads }}"
+          {{- with .Values.transmission.resources }}
+          resources:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+      volumes:
+        {{ if not .Values.general.storage.customVolume }}
+        - name: media-volume
+          persistentVolumeClaim:
+            claimName: {{ .Values.general.storage.pvcName }}
+        {{ else }}
+        - name: media-volume
+          {{- toYaml .Values.general.storage.volumes | nindent 10 }}
+        {{ end }}
+        - name: init-files-transmission
+          configMap:
+            defaultMode: 493
+            name: {{ template "kube-media.name" . }}-transmission
+      {{- with .Values.general.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: transmission
+  labels:
+    {{- include "kube-media.labels" . | nindent 4 }}
+spec:
+  type: {{ .Values.transmission.service.utp.type }}
+  ports:
+    - port: {{ .Values.transmission.service.utp.port }}
+      targetPort: {{ .Values.transmission.container.port.utp }}
+      protocol: TCP
+      name: trans-port
+{{ if eq .Values.transmission.service.utp.type "NodePort" }}
+      nodePort: {{ .Values.transmission.service.utp.nodePort }}
+{{ end }}
+  selector:
+    app: transmission
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: transmission-peer-tcp
+  labels:
+    {{- include "kube-media.labels" . | nindent 4 }}
+spec:
+  type: {{ .Values.transmission.service.peer.type }}
+  ports:
+    - port: {{ .Values.transmission.service.peer.port }}
+      targetPort: {{ .Values.transmission.container.port.peer }}
+      protocol: TCP
+      name: trans-peer-tcp
+{{ if eq .Values.transmission.service.peer.type "NodePort" }}
+      nodePort: {{ .Values.transmission.service.peer.nodePort }}
+{{ end }}
+  selector:
+    app: transmission
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: transmission-peer-udp
+  labels:
+    {{- include "kube-media.labels" . | nindent 4 }}
+spec:
+  type: {{ .Values.transmission.service.peer.type }}
+  ports:
+    - port: {{ .Values.transmission.service.peer.port }}
+      targetPort: {{ .Values.transmission.container.port.peer }}
+      protocol: UDP
+      name: trans-peer-udp
+{{ if eq .Values.transmission.service.peer.type "NodePort" }}
+      nodePort: {{ .Values.transmission.service.peer.nodePortUDP }}
+{{ end }}
+  selector:
+    app: transmission
+---
+{{ if .Values.transmission.service.utp.extraLBService }}
+apiVersion: v1
+kind: Service
+metadata:
+  name: transmission-lb
+  labels:
+    {{- include "kube-media.labels" . | nindent 4 }}
+spec:
+  type: LoadBalancer
+  ports:
+    - port: {{ .Values.transmission.service.port }}
+      targetPort: {{ .Values.transmission.container.port }}
+      protocol: TCP
+      name: trans-port
+  selector:
+    app: transmission
+---
+{{ end }}
+{{ if .Values.transmission.service.peer.extraLBService }}
+apiVersion: v1
+kind: Service
+metadata:
+  name: transmission-lb-peer-tcp
+  labels:
+    {{- include "kube-media.labels" . | nindent 4 }}
+spec:
+  type: LoadBalancer
+  ports:
+    - port: {{ .Values.transmission.service.peer.port }}
+      targetPort: {{ .Values.transmission.container.port.peer }}
+      protocol: TCP
+      name: trans-peer-tcp
+  selector:
+    app: transmission
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: transmission-lb-peer-udp
+  labels:
+    {{- include "kube-media.labels" . | nindent 4 }}
+spec:
+  type: LoadBalancer
+  ports:
+    - port: {{ .Values.transmission.service.peer.port }}
+      targetPort: {{ .Values.transmission.container.port.peer }}
+      protocol: UDP
+      name: trans-peer-udp
+  selector:
+    app: transmission
+{{ end }}
+---
+{{ if .Values.transmission.ingress.enabled }}
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: transmission
+  labels:
+    {{- include "kube-media.labels" . | nindent 4 }}
+  {{- with .Values.transmission.ingress.annotations }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+spec:
+{{- if .Values.transmission.ingress.tls.enabled }}
+  tls:
+    - hosts:
+        - {{ .Values.general.ingress_host | quote }}
+      secretName: {{ .Values.transmission.ingress.tls.secretName }}
+{{ end }}     
+  rules:
+    - host: {{ .Values.general.ingress_host | quote }}
+      http:
+        paths:
+          - path: {{ .Values.transmission.ingress.path }}
+            pathType: Prefix
+            backend:
+              service:
+                name: transmission
+                port:
+                  number: {{ .Values.transmission.service.utp.port }}
+{{ end }}     
+{{ end }}

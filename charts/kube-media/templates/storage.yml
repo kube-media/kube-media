@@ -1,0 +1,13 @@
+{{ if not .Values.general.storage.customVolume }}
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: {{ .Values.general.storage.pvcName }}
+spec:
+  accessModes:
+    - ReadWriteMany
+  resources:
+    requests:
+      storage: {{ .Values.general.storage.size }}
+  storageClassName: {{ if (kindIs "invalid" .Values.general.storage.pvcStorageClass) }}""{{- else }}{{ .Values.general.storage.pvcStorageClass | quote }}{{- end }}
+{{ end }}

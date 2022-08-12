@@ -1,0 +1,163 @@
+{{ if .Values.tautulli.enabled }}
+---
+apiVersion: v1
+data:
+  config.ini: |
+    [General]
+    http_root = /tautulli
+    pms_ip = plex
+    pms_url = http://plex:32400
+  tautulli.sh: |
+    #!/bin/bash
+    if [ ! -f /config/config.ini ]; then
+      cp -n /tautulli/config.ini /config/config.ini
+    fi
+kind: ConfigMap
+metadata:
+  name: {{ template "kube-media.name" . }}-tautulli
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: tautulli
+  labels:
+    {{- include "kube-media.labels" . | nindent 4 }}
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      {{- include "kube-media.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "kube-media.selectorLabels" . | nindent 8 }}
+        app: tautulli
+    spec:
+      initContainers:
+        - name: config-tautulli
+          image: docker.io/ubuntu:groovy
+          command: ["/tautulli/tautulli.sh"]
+          volumeMounts:
+            - mountPath: /tautulli
+              name: init-files-tautulli
+            - mountPath: /config
+              name: media-volume
+              subPath: "{{ .Values.general.storage.subPaths.config }}/tautulli"
+          securityContext:
+            runAsUser: {{ .Values.general.puid }}
+            runAsGroup: {{ .Values.general.pgid }}
+      containers:
+        - name: tautulli
+          env:
+            - name: PGID
+              value: "{{ .Values.general.pgid }}"
+            - name: PUID
+              value: "{{ .Values.general.puid }}"
+          image: "{{ .Values.tautulli.image.repository }}:{{ .Values.tautulli.image.tag }}"
+          imagePullPolicy: {{ .Values.tautulli.image.pullPolicy }}
+          readinessProbe:
+            tcpSocket:
+              port: {{ .Values.tautulli.container.port }}
+            initialDelaySeconds: 10
+            periodSeconds: 20
+          ports:
+            - name: tautulli-port
+              containerPort: {{ .Values.tautulli.container.port }}
+              protocol: TCP
+          volumeMounts:
+            - name: media-volume
+              mountPath: "/config"
+              subPath: "{{ .Values.general.storage.subPaths.config }}/tautulli"
+          {{- with .Values.tautulli.resources }}
+          resources:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+          securityContext:
+            runAsUser: {{ .Values.general.puid }}
+            runAsGroup: {{ .Values.general.pgid }}
+      volumes:
+        {{ if not .Values.general.storage.customVolume }}
+        - name: media-volume
+          persistentVolumeClaim:
+            claimName: {{ .Values.general.storage.pvcName }}
+        {{ else }}
+        - name: media-volume
+          {{- toYaml .Values.general.storage.volumes | nindent 10 }}
+        {{ end }}
+        - name: init-files-tautulli
+          configMap:
+            defaultMode: 493
+            name: {{ template "kube-media.name" . }}-tautulli
+      {{- with .Values.general.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: tautulli
+  labels:
+    {{- include "kube-media.labels" . | nindent 4 }}
+spec:
+  type: {{ .Values.tautulli.service.type }}
+  ports:
+    - port: {{ .Values.tautulli.service.port }}
+      targetPort: {{ .Values.tautulli.container.port }}
+      protocol: TCP
+{{ if eq .Values.tautulli.service.type "NodePort" }}
+      nodePort: {{ .Values.tautulli.service.nodePort }}
+{{ end }}
+      name: tautulli-port
+  selector:
+    app: tautulli
+---
+{{ if .Values.tautulli.service.extraLBService }}
+apiVersion: v1
+kind: Service
+metadata:
+  name: tautulli-lb
+  labels:
+    {{- include "kube-media.labels" . | nindent 4 }}
+spec:
+  type: LoadBalancer
+  ports:
+    - port: {{ .Values.tautulli.service.port }}
+      targetPort: {{ .Values.tautulli.container.port }}
+      protocol: TCP
+      name: tautulli-port
+  selector:
+    app: tautulli
+{{ end }}
+---
+{{ if .Values.tautulli.ingress.enabled }}
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: tautulli
+  labels:
+    {{- include "kube-media.labels" . | nindent 4 }}
+  {{- with .Values.tautulli.ingress.annotations }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+spec:
+{{- if .Values.tautulli.ingress.tls.enabled }}
+  tls:
+    - hosts:
+        - {{ .Values.general.ingress_host | quote }}
+      secretName: {{ .Values.tautulli.ingress.tls.secretName }}
+{{ end }}
+  rules:
+    - host: {{ .Values.general.ingress_host | quote }}
+      http:
+        paths:
+          - path: {{ .Values.tautulli.ingress.path }}
+            pathType: Prefix
+            backend:
+              service:
+                name: tautulli
+                port:
+                  number: {{ .Values.tautulli.service.port }}
+{{ end }}     
+{{ end }}

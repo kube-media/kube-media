@@ -1,0 +1,170 @@
+{{ if .Values.sonarr.enabled }}
+---
+### CONFIGMAP
+## INIT-CONTAINER
+apiVersion: v1
+data:
+  config.xml: |
+    <Config>
+      <UrlBase>{{ .Values.sonarr.ingress.path }}</UrlBase>
+    </Config>
+  sonarr.sh: |
+    #!/bin/bash
+    if [ ! -f /config/config.xml ]; then
+      cp -n /sonarr/config.xml /config/config.xml
+    fi
+kind: ConfigMap
+metadata:
+  name: {{ template "kube-media.name" . }}-sonarr
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: sonarr
+  labels:
+    {{- include "kube-media.labels" . | nindent 4 }}
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      {{- include "kube-media.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "kube-media.selectorLabels" . | nindent 8 }}
+        app: sonarr
+    spec:
+      initContainers:
+        - name: config-sonarr
+          image: docker.io/ubuntu:groovy
+          command: ["/sonarr/sonarr.sh"]
+          volumeMounts:
+            - mountPath: /sonarr 
+              name: init-files-sonarr
+            - mountPath: /config
+              name: media-volume
+              subPath: "{{ .Values.general.storage.subPaths.config }}/sonarr"
+          securityContext:
+            runAsUser: {{ .Values.general.puid }}
+            runAsGroup: {{ .Values.general.pgid }}
+      containers:
+        - name: sonarr
+          env:
+            - name: PGID
+              value: "{{ .Values.general.pgid }}"
+            - name: PUID
+              value: "{{ .Values.general.puid }}"
+          image: "{{ .Values.sonarr.image.repository }}:{{ .Values.sonarr.image.tag }}"
+          imagePullPolicy: {{ .Values.sonarr.image.pullPolicy }}
+          readinessProbe:
+            tcpSocket:
+              port: {{ .Values.sonarr.container.port }}
+            initialDelaySeconds: 10
+            periodSeconds: 20
+          ports:
+            - name: sonarr-port
+              containerPort: {{ .Values.sonarr.container.port }}
+              protocol: TCP
+          volumeMounts: 
+            - name: media-volume
+              mountPath: "/config"
+              subPath: "{{ .Values.general.storage.subPaths.config }}/sonarr"
+            - name: media-volume
+              mountPath: "/downloads"
+              subPath: "{{ .Values.general.storage.subPaths.downloads }}"
+            - name: media-volume
+              mountPath: "/tv"
+              subPath: "{{ .Values.general.storage.subPaths.tv }}"
+          {{- with .Values.sonarr.resources }}
+          resources:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+          securityContext:
+            runAsUser: {{ .Values.general.puid }}
+            runAsGroup: {{ .Values.general.pgid }}
+      volumes:
+        {{ if not .Values.general.storage.customVolume }}
+        - name: media-volume
+          persistentVolumeClaim:
+            claimName: {{ .Values.general.storage.pvcName }}
+        {{ else }}
+        - name: media-volume
+          {{- toYaml .Values.general.storage.volumes | nindent 10 }}
+        {{ end }}
+        - name: init-files-sonarr
+          configMap:
+            defaultMode: 493
+            name: {{ template "kube-media.name" . }}-sonarr
+      {{- with .Values.general.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: sonarr
+  labels:
+    {{- include "kube-media.labels" . | nindent 4 }}
+spec:
+  type: {{ .Values.sonarr.service.type }}
+  ports:
+    - port: {{ .Values.sonarr.service.port }}
+      targetPort: {{ .Values.sonarr.container.port }}
+      protocol: TCP
+{{ if eq .Values.sonarr.service.type "NodePort" }}
+      nodePort: {{ .Values.sonarr.service.nodePort }}
+{{ end }}
+      name: sonarr-port
+  selector:
+    app: sonarr
+---
+{{ if .Values.sonarr.service.extraLBService }}
+apiVersion: v1
+kind: Service
+metadata:
+  name: sonarr-lb
+  labels:
+    {{- include "kube-media.labels" . | nindent 4 }}
+spec:
+  type: LoadBalancer
+  ports:
+    - port: {{ .Values.sonarr.service.port }}
+      targetPort: {{ .Values.sonarr.container.port }}
+      protocol: TCP
+      name: sonarr-port
+  selector:
+    app: sonarr
+{{ end }}
+---
+{{ if .Values.sonarr.ingress.enabled }}
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: sonarr
+  labels:
+    {{- include "kube-media.labels" . | nindent 4 }}
+  {{- with .Values.sonarr.ingress.annotations }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+spec:
+{{- if .Values.sonarr.ingress.tls.enabled }}
+  tls:
+    - hosts:
+        - {{ .Values.general.ingress_host | quote }}
+      secretName: {{ .Values.sonarr.ingress.tls.secretName }}
+{{ end }}     
+  rules:
+    - host: {{ .Values.general.ingress_host | quote }}
+      http:
+        paths:
+          - path: {{ .Values.sonarr.ingress.path }}
+            pathType: Prefix
+            backend:
+              service:
+                name: sonarr
+                port:
+                  number: {{ .Values.sonarr.service.port }}
+{{ end }}     
+{{ end }}

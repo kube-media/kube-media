@@ -1,0 +1,25 @@
+apiVersion: v2
+appVersion: 0.0.1
+kubeVersion: ">=1.16.0-0"
+home: https://kube-media.dev
+sources:
+  - https://github.com/kube-media/kube-media
+  - https://kube-media.dev
+maintainers:
+  - name: Nick Pratley
+    email: nick@npratley.net
+    url: https://npratley.net
+name: kube-media
+description: Kube Media - A highly opinionated Kubernetes media server
+type: application
+version: 0.0.1
+keywords:
+  - kube-media
+  - Plex
+  - Sonarr
+  - Radarr
+  - Lidarr
+  - prowlarr
+  - overseerr
+  - sabnzbd
+  -

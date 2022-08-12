@@ -1,0 +1,162 @@
+{{ if .Values.prowlarr.enabled }}
+---
+apiVersion: v1
+data:
+  config.xml: |
+    <Config>
+      <UrlBase>{{ .Values.prowlarr.ingress.path }}</UrlBase>
+    </Config>
+  prowlarr.sh: |
+    #!/bin/bash
+    if [ ! -f /config/config.xml ]; then
+      cp -n /prowlarr/config.xml /config/config.xml
+    fi
+kind: ConfigMap
+metadata:
+  name: {{ template "kube-media.name" . }}-prowlarr
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: prowlarr
+  labels:
+    {{- include "kube-media.labels" . | nindent 4 }}
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      {{- include "kube-media.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "kube-media.selectorLabels" . | nindent 8 }}
+        app: prowlarr
+    spec:
+      initContainers:
+        - name: config-prowlarr
+          image: docker.io/ubuntu:groovy
+          command: ["/prowlarr/prowlarr.sh"]
+          volumeMounts:
+            - mountPath: /prowlarr 
+              name: init-files-prowlarr
+            - mountPath: /config
+              name: media-volume
+              subPath: "{{ .Values.general.storage.subPaths.config }}/prowlarr"
+          securityContext:
+            runAsUser: {{ .Values.general.puid }}
+            runAsGroup: {{ .Values.general.pgid }}
+      containers:
+        - name: prowlarr
+          env:
+            - name: PGID
+              value: "{{ .Values.general.pgid }}"
+            - name: PUID
+              value: "{{ .Values.general.puid }}"
+          image: "{{ .Values.prowlarr.image.repository }}:{{ .Values.prowlarr.image.tag }}"
+          imagePullPolicy: {{ .Values.prowlarr.image.pullPolicy }}
+          readinessProbe:
+            tcpSocket:
+              port: {{ .Values.prowlarr.container.port }}
+            initialDelaySeconds: 10
+            periodSeconds: 20
+          ports:
+            - name: prowlarr-port
+              containerPort: {{ .Values.prowlarr.container.port }}
+              protocol: TCP
+          volumeMounts: 
+            - name: media-volume
+              mountPath: "/config"
+              subPath: "{{ .Values.general.storage.subPaths.config }}/prowlarr"
+          {{- with .Values.prowlarr.resources }}
+          resources:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+          securityContext:
+            runAsUser: {{ .Values.general.puid }}
+            runAsGroup: {{ .Values.general.pgid }}
+      volumes:
+        {{ if not .Values.general.storage.customVolume }}
+        - name: media-volume
+          persistentVolumeClaim:
+            claimName: {{ .Values.general.storage.pvcName }}
+        {{ else }}
+        - name: media-volume
+          {{- toYaml .Values.general.storage.volumes | nindent 10 }}
+        {{ end }}
+        - name: init-files-prowlarr
+          configMap:
+            defaultMode: 493
+            name: {{ template "kube-media.name" . }}-prowlarr
+      {{- with .Values.general.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: prowlarr
+  labels:
+    {{- include "kube-media.labels" . | nindent 4 }}
+spec:
+  type: {{ .Values.prowlarr.service.type }}
+  ports:
+    - port: {{ .Values.prowlarr.service.port }}
+      targetPort: {{ .Values.prowlarr.container.port }}
+      protocol: TCP
+{{ if eq .Values.prowlarr.service.type "NodePort" }}
+      nodePort: {{ .Values.prowlarr.service.nodePort }}
+{{ end }}
+      name: prowlarr-port
+  selector:
+    app: prowlarr
+---
+{{ if .Values.prowlarr.service.extraLBService }}
+apiVersion: v1
+kind: Service
+metadata:
+  name: prowlarr-lb
+  labels:
+    {{- include "kube-media.labels" . | nindent 4 }}
+spec:
+  type: LoadBalancer
+  ports:
+    - port: {{ .Values.prowlarr.service.port }}
+      targetPort: {{ .Values.prowlarr.container.port }}
+      protocol: TCP
+      name: prowlarr-port
+  selector:
+    app: prowlarr
+{{ end }}
+---
+{{ if .Values.prowlarr.ingress.enabled }}
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: prowlarr
+  labels:
+    {{- include "kube-media.labels" . | nindent 4 }}
+  {{- with .Values.prowlarr.ingress.annotations }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+spec:
+{{- if .Values.prowlarr.ingress.tls.enabled }}
+  tls:
+    - hosts:
+        - {{ .Values.general.ingress_host | quote }}
+      secretName: {{ .Values.prowlarr.ingress.tls.secretName }}
+{{ end }}     
+  rules:
+    - host: {{ .Values.general.ingress_host | quote }}
+      http:
+        paths:
+          - path: {{ .Values.prowlarr.ingress.path }}
+            pathType: Prefix
+            backend:
+              service:
+                name: prowlarr
+                port:
+                  number: {{ .Values.prowlarr.service.port }}
+{{ end }}     
+{{ end }}

@@ -1,0 +1,134 @@
+{{ if .Values.overseerr.enabled }}
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: overseerr
+  labels:
+    {{- include "kube-media.labels" . | nindent 4 }}
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      {{- include "kube-media.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "kube-media.selectorLabels" . | nindent 8 }}
+        app: overseerr
+    spec:
+      containers:
+        - name: overseerr
+          env:
+            - name: PGID
+              value: "{{ .Values.general.pgid }}"
+            - name: PUID
+              value: "{{ .Values.general.puid }}"
+          image: "{{ .Values.overseerr.image.repository }}:{{ .Values.overseerr.image.tag }}"
+          imagePullPolicy: {{ .Values.overseerr.image.pullPolicy }}
+          readinessProbe:
+            tcpSocket:
+              port: {{ .Values.overseerr.container.port }}
+            initialDelaySeconds: 10
+            periodSeconds: 20
+          ports:
+            - name: overseerr-port
+              containerPort: {{ .Values.overseerr.container.port }}
+              protocol: TCP
+          volumeMounts:
+            - name: media-volume
+              mountPath: "/app/config"
+              subPath: "{{ .Values.general.storage.subPaths.config }}/overseerr"
+          {{- with .Values.overseerr.resources }}
+          resources:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+          securityContext:
+            runAsUser: {{ .Values.general.puid }}
+            runAsGroup: {{ .Values.general.pgid }}
+      volumes:
+        {{ if not .Values.general.storage.customVolume }}
+        - name: media-volume
+          persistentVolumeClaim:
+            claimName: {{ .Values.general.storage.pvcName }}
+        {{ else }}
+        - name: media-volume
+          {{- toYaml .Values.general.storage.volumes | nindent 10 }}
+        {{ end }}
+        - name: init-files-overseerr
+          configMap:
+            defaultMode: 493
+            name: {{ template "kube-media.name" . }}-overseerr
+      {{- with .Values.general.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: overseerr
+  labels:
+    {{- include "kube-media.labels" . | nindent 4 }}
+spec:
+  type: {{ .Values.overseerr.service.type }}
+  ports:
+    - port: {{ .Values.overseerr.service.port }}
+      targetPort: {{ .Values.overseerr.container.port }}
+      protocol: TCP
+{{ if eq .Values.overseerr.service.type "NodePort" }}
+      nodePort: {{ .Values.overseerr.service.nodePort }}
+{{ end }}
+      name: overseerr-port
+  selector:
+    app: overseerr
+---
+{{ if .Values.overseerr.service.extraLBService }}
+apiVersion: v1
+kind: Service
+metadata:
+  name: overseerr-lb
+  labels:
+    {{- include "kube-media.labels" . | nindent 4 }}
+spec:
+  type: LoadBalancer
+  ports:
+    - port: {{ .Values.overseerr.service.port }}
+      targetPort: {{ .Values.overseerr.container.port }}
+      protocol: TCP
+      name: overseerr-port
+  selector:
+    app: overseerr
+{{ end }}
+---
+{{ if .Values.overseerr.ingress.enabled }}
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: overseerr
+  labels:
+    {{- include "kube-media.labels" . | nindent 4 }}
+  {{- with .Values.overseerr.ingress.annotations }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+spec:
+{{- if .Values.overseerr.ingress.tls.enabled }}
+  tls:
+    - hosts:
+        - {{ .Values.general.overseerr_ingress_host | quote }}
+      secretName: {{ .Values.overseerr.ingress.tls.secretName }}
+{{ end }}
+  rules:
+    - host: {{ .Values.general.overseerr_ingress_host | quote }}
+      http:
+        paths:
+          - path: {{ .Values.overseerr.ingress.path }}
+            pathType: Prefix
+            backend:
+              service:
+                name: overseerr
+                port:
+                  number: {{ .Values.overseerr.service.port }}
+{{ end }}     
+{{ end }}

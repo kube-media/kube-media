@@ -1,0 +1,169 @@
+{{ if .Values.lidarr.enabled }}
+---
+apiVersion: v1
+data:
+  config.xml: |
+    <Config>
+        <UrlBase>{{ .Values.lidarr.ingress.path }}</UrlBase>
+    </Config>
+  lidarr.sh: |
+    #!/bin/bash
+    if [ ! -f /config/config.xml ]; then
+      cp -n /lidarr/config.xml /config/config.xml
+    fi
+kind: ConfigMap
+metadata:
+  name: {{ template "kube-media.name" . }}-lidarr
+
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: lidarr
+  labels:
+    {{- include "kube-media.labels" . | nindent 4 }}
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      {{- include "kube-media.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "kube-media.selectorLabels" . | nindent 8 }}
+        app: lidarr
+    spec:
+      initContainers:
+        - name: config-lidarr
+          image: docker.io/ubuntu:groovy
+          command: [ "/lidarr/lidarr.sh" ]
+          volumeMounts:
+            - mountPath: /lidarr
+              name: init-files-lidarr
+            - mountPath: /config
+              name: media-volume
+              subPath: "{{ .Values.general.storage.subPaths.config }}/lidarr"
+          securityContext:
+            runAsUser: {{ .Values.general.puid }}
+            runAsGroup: {{ .Values.general.pgid }}
+      containers:
+        - name: lidarr
+          env:
+            - name: PGID
+              value: "{{ .Values.general.pgid }}"
+            - name: PUID
+              value: "{{ .Values.general.puid }}"
+          image: "{{ .Values.lidarr.image.repository }}:{{ .Values.lidarr.image.tag }}"
+          imagePullPolicy: {{ .Values.lidarr.image.pullPolicy }}
+          readinessProbe:
+            tcpSocket:
+              port: {{ .Values.lidarr.container.port }}
+            initialDelaySeconds: 10
+            periodSeconds: 20
+          ports:
+            - name: lidarr-port
+              containerPort: {{ .Values.lidarr.container.port }}
+              protocol: TCP
+          volumeMounts:
+            - name: media-volume
+              mountPath: "/config"
+              subPath: "{{ .Values.general.storage.subPaths.config }}/lidarr"
+            - name: media-volume
+              mountPath: "/downloads"
+              subPath: "{{ .Values.general.storage.subPaths.downloads }}"
+            - name: media-volume
+              mountPath: "/music"
+              subPath: "{{ .Values.general.storage.subPaths.music }}"
+          {{- with .Values.lidarr.resources }}
+          resources:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+          securityContext:
+            runAsUser: {{ .Values.general.puid }}
+            runAsGroup: {{ .Values.general.pgid }}
+      volumes:
+        {{ if not .Values.general.storage.customVolume }}
+        - name: media-volume
+          persistentVolumeClaim:
+            claimName: {{ .Values.general.storage.pvcName }}
+        {{ else }}
+        - name: media-volume
+          {{- toYaml .Values.general.storage.volumes | nindent 10 }}
+        {{ end }}
+        - name: init-files-lidarr
+          configMap:
+            defaultMode: 493
+            name: {{ template "kube-media.name" . }}-lidarr
+      {{- with .Values.general.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: lidarr
+  labels:
+    {{- include "kube-media.labels" . | nindent 4 }}
+spec:
+  type: {{ .Values.lidarr.service.type }}
+  ports:
+    - port: {{ .Values.lidarr.service.port }}
+      targetPort: {{ .Values.lidarr.container.port }}
+      protocol: TCP
+{{ if eq .Values.lidarr.service.type "NodePort" }}
+      nodePort: {{ .Values.lidarr.service.nodePort }}
+{{ end }}
+      name: lidarr-port
+  selector:
+    app: lidarr
+---
+{{ if .Values.lidarr.service.extraLBService }}
+apiVersion: v1
+kind: Service
+metadata:
+  name: lidarr-lb
+  labels:
+    {{- include "kube-media.labels" . | nindent 4 }}
+spec:
+  type: LoadBalancer
+  ports:
+    - port: {{ .Values.lidarr.service.port }}
+      targetPort: {{ .Values.lidarr.container.port }}
+      protocol: TCP
+      name: lidarr-port
+  selector:
+    app: lidarr
+{{ end }}
+---
+{{ if .Values.lidarr.ingress.enabled }}
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: lidarr
+  labels:
+    {{- include "kube-media.labels" . | nindent 4 }}
+  {{- with .Values.lidarr.ingress.annotations }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+spec:
+{{- if .Values.lidarr.ingress.tls.enabled }}
+  tls:
+    - hosts:
+        - {{ .Values.general.ingress_host | quote }}
+      secretName: {{ .Values.lidarr.ingress.tls.secretName }}
+{{ end }}
+  rules:
+    - host: {{ .Values.general.ingress_host | quote }}
+      http:
+        paths:
+          - path: {{ .Values.lidarr.ingress.path }}
+            pathType: Prefix
+            backend:
+              service:
+                name: lidarr
+                port:
+                  number: {{ .Values.lidarr.service.port }}
+{{ end }}
+{{ end }}

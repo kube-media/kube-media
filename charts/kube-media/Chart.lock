@@ -1,0 +1,6 @@
+dependencies:
+- name: hajimari
+  repository: https://hajimari.io
+  version: 1.2.0
+digest: sha256:0552e9a4efa28139834bded6635334d9e00bd21d1af959eb9be6a604abfa33ab
+generated: "2022-08-11T11:12:45.772463+10:00"

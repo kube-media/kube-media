@@ -1,0 +1,320 @@
+nameOverride:
+
+general:
+  plex_ingress_host: plex.k8s.test
+  ingress_host: kube-media.k8s.test
+
+  puid: 1000
+  pgid: 1000
+  timezone: Australia/Sydney
+
+  storage:
+    customVolume: false  #set to true if not using a PVC (must provide volume below)
+    pvcName: kube-media-pvc
+    size: 5Gi
+    pvcStorageClass: ''
+    # the path starting from the top level of the pv you're passing. If your share is server.local/share/, then tv is server.local/share/media/tv
+    subPaths:
+      tv: media/tv
+      movies: media/movies
+      music: media/music
+      downloads: downloads
+      transmission: transmission
+      sabnzbd: sabnzbd
+      config: config
+
+    # Must be set if using custom volume
+    volumes: { }
+
+sonarr:
+  enabled: false
+  image:
+    repository: ghcr.io/k8s-at-home/sonarr
+    tag: v3.0.9.1549
+    pullPolicy: IfNotPresent
+  container:
+    nodeSelector: { }
+    port: 8989
+  service:
+    type: ClusterIP
+    port: 8989
+    nodePort:
+    extraLBService: false
+    # Defines an additional LB service, requires cloud provider service or MetalLB
+
+  ingress:
+    enabled: true
+    annotations: { }
+    path: /sonarr
+    tls:
+      enabled: false
+      secretName: ""
+  resources: { }
+
+lidarr:
+  enabled: false
+  image:
+    repository: ghcr.io/k8s-at-home/lidarr
+    tag: v1.0.2.2590
+    pullPolicy: IfNotPresent
+  container:
+    nodeSelector: { }
+    port: 8686
+  service:
+    type: ClusterIP
+    port: 8686
+    nodePort:
+    extraLBService: false
+    # Defines an additional LB service, requires cloud provider service or MetalLB
+
+  ingress:
+    enabled: true
+    annotations: { }
+    path: /lidarr
+    tls:
+      enabled: false
+      secretName: ""
+  resources: { }
+
+tautulli:
+  enabled: false
+  image:
+    repository: ghcr.io/k8s-at-home/tautulli
+    tag: v2.10.3
+    pullPolicy: IfNotPresent
+  container:
+    nodeSelector: { }
+    port: 8181
+  service:
+    type: ClusterIP
+    port: 8181
+    nodePort:
+    extraLBService: false
+    # Defines an additional LB service, requires cloud provider service or MetalLB
+
+  ingress:
+    enabled: true
+    annotations: { }
+    path: /tautulli
+    tls:
+      enabled: false
+      secretName: ""
+  resources: { }
+
+prowlarr:
+  enabled: false
+  image:
+    repository: ghcr.io/k8s-at-home/prowlarr
+    tag: v0.4.0.1801
+    pullPolicy: IfNotPresent
+  container:
+    nodeSelector: { }
+    port: 9696
+  service:
+    type: ClusterIP
+    port: 9696
+    nodePort:
+    extraLBService: false
+    # Defines an additional LB service, requires cloud provider service or MetalLB
+
+  ingress:
+    enabled: true
+    annotations: { }
+    path: /prowlarr
+    tls:
+      enabled: false
+      secretName: ""
+  resources: { }
+
+radarr:
+  enabled: false
+  image:
+    repository: ghcr.io/k8s-at-home/radarr
+    tag: v4.1.0.6175
+    pullPolicy: IfNotPresent
+  container:
+    nodeSelector: { }
+    port: 7878
+  service:
+    type: ClusterIP
+    port: 7878
+    nodePort:
+    extraLBService: false
+    # Defines an additional LB service, requires cloud provider service or MetalLB 
+
+  ingress:
+    enabled: true
+    annotations: { }
+    path: /radarr
+    tls:
+      enabled: false
+      secretName: ""
+  resources: { }
+
+transmission:
+  enabled: false
+  image:
+    repository: linuxserver/transmission
+    tag: 3.00-r5-ls131
+    pullPolicy: IfNotPresent
+  container:
+    nodeSelector: { }
+    port:
+      utp: 9091
+      peer: 51413
+  service:
+    utp:
+      type: ClusterIP
+      port: 9091
+      nodePort:
+      # Defines an additional LB service, requires cloud provider service or MetalLB 
+      extraLBService: false
+    peer:
+      type: ClusterIP
+      port: 51413
+      nodePort:
+      nodePortUDP:
+      # Defines an additional LB service, requires cloud provider service or MetalLB 
+      extraLBService: false
+  ingress:
+    enabled: true
+    annotations: { }
+    path: /transmission
+    tls:
+      enabled: false
+      secretName: ""
+  config:
+    auth:
+      enabled: false
+      username: ""
+      password: ""
+  resources: { }
+
+sabnzbd:
+  enabled: false
+  image:
+    repository: ghcr.io/k8s-at-home/sabnzbd
+    tag: v3.6.0
+    pullPolicy: IfNotPresent
+
+  container:
+    nodeSelector: { }
+    port:
+      http: 8080
+      https: 9090
+  service:
+    http:
+      type: ClusterIP
+      port: 8080
+      nodePort:
+      # Defines an additional LB service, requires cloud provider service or MetalLB 
+      extraLBService: false
+    https:
+      type: ClusterIP
+      port: 9090
+      nodePort:
+      # Defines an additional LB service, requires cloud provider service or MetalLB 
+      extraLBService: false
+  ingress:
+    enabled: true
+    annotations: { }
+    path: /sabnzbd
+    tls:
+      enabled: false
+      secretName: ""
+  resources: { }
+
+plex:
+  enabled: false
+  image:
+    repository: plexinc/pms-docker
+    tag: 1.28.0.5999-97678ded3
+    pullPolicy: IfNotPresent
+
+  extraVolumes: [ ]
+    # - name: nfs
+    #   nfs:
+    #     server: nfs.local
+    #     path: /mnt/nfs
+
+  extraMounts: [ ]
+    # - name: nfs
+    #   mountPath: /mnt/nfs
+    #   readOnly: false
+
+  config:
+    PLEX_CLAIM: "ChangeMe"
+    # This needs to be set to your pod network for kube-plex to work correctly,
+    # as it needs unauthenticated access to the plex api
+    ALLOWED_NETWORKS: "10.233.64.0/18"
+
+  kubePlex:
+    enabled: false
+    loglevel: ""
+    mounts: /media,/transcode
+    serviceAccount:
+      # Create or use an existing service account
+      create: true
+      name: ""
+    image:
+      repository: ghcr.io/ressu/kube-plex
+      tag: latest
+      pullPolicy: Always
+    resources: { }
+      # Limits and requests that are applied to the kube-plex transcoding pod. Can
+      # be used to request GPU instances for pods as well as normal Kubernetes
+      # limits.
+      # requests:
+      #   cpu: 100m
+      #   "gpu.intel.com/i915: 1
+    # limits:
+    #   "gpu.intel.com/i915: 1
+
+  replicaCount: 1
+  container:
+    nodeSelector: { }
+    port: 32400
+  service:
+    type: ClusterIP
+    port: 32400
+    nodePort:
+    # Defines an additional LB service, requires cloud provider service or MetalLB 
+    extraLBService: false
+  ingress:
+    enabled: true
+    annotations: { }
+    tls:
+      enabled: false
+      secretName: ""
+  resources: { }
+  #  limits:
+  #    cpu: 100m
+  #    memory: 100Mi
+  #  requests:
+  #    cpu: 100m
+  #    memory: 100Mi
+
+overseerr:
+  enabled: false
+  image:
+    repository: ghcr.io/sct/overseerr
+    tag: b33956e6b85b2c2fc12e23951c06f36e009fb627
+    pullPolicy: IfNotPresent
+  container:
+    nodeSelector: { }
+    port: 5055
+  service:
+    type: ClusterIP
+    port: 5055
+    nodePort:
+    extraLBService: false
+    # Defines an additional LB service, requires cloud provider service or MetalLB
+
+  ingress:
+    enabled: true
+    annotations: { }
+    path: /
+    tls:
+      enabled: false
+      secretName: ""
+  resources: { }
