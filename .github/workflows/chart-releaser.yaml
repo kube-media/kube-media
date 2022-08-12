@@ -52,7 +52,7 @@ jobs:
           for i in "${CHARTS[@]}"
           do
               IFS='/' read -r -a chart_parts <<< "$i"
-              if [ -f "charts/${chart_parts[0]}"/Chart.yaml" ]; then
+              if [ -f "charts/${chart_parts[0]}/Chart.yaml" ]; then
                 ./.github/scripts/gen-helm-docs.sh "${chart_parts[0]}"
               fi
           done
