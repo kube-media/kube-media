@@ -1,6 +1,7 @@
 name: Build pages
 
 on:
+  workflow_dispatch:
   push:
     branches:
       - main
@@ -8,6 +9,7 @@ on:
       - "docs/**"
       - "requirements.txt"
       - "mkdocs.yml"
+      - .github/workflows/pages.yml
 
   pull_request:
     branches:

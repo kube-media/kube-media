@@ -1,4 +1,7 @@
-# About Kube Media
+[![Build pages](https://github.com/kube-media/kube-media/actions/workflows/pages.yml/badge.svg)](https://github.com/kube-media/kube-media/actions/workflows/pages.yml)
+[![Charts: Release](https://github.com/kube-media/kube-media/actions/workflows/chart-releaser.yaml/badge.svg)](https://github.com/kube-media/kube-media/actions/workflows/chart-releaser.yaml)
+
+# Kube Media
 
 Kube Media is a [helm chart] you can use to deploy a highly-available media server on any Kubernetes cluster - based on
 any combination of the following components:
