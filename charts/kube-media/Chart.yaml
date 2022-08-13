@@ -12,7 +12,7 @@ maintainers:
 name: kube-media
 description: Kube Media - A highly opinionated Kubernetes media server
 type: application
-version: 0.0.4
+version: 0.0.5
 keywords:
   - kube-media
   - Plex
