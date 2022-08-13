@@ -54,7 +54,7 @@ jobs:
           GITHUB_TOKEN: ${{ steps.generate-token.outputs.token }}
 
       - name: Build website
-        run: mkdocs build --strict
+        run: mkdocs build
 
       - name: Deploy
         if: github.ref == 'refs/heads/main'
