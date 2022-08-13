@@ -4,6 +4,11 @@ on:
   push:
     branches:
       - main
+    paths:
+      - "docs/**"
+      - "requirements.txt"
+      - "mkdocs.yml"
+
   pull_request:
     branches:
       - main
