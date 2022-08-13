@@ -36,14 +36,24 @@ jobs:
         run: pip install -r requirements.txt
 
       - name: Build website
-        run: mkdocs build
+        run: mkdocs build --strict
 
       - name: Deploy
         if: github.ref == 'refs/heads/main'
-        uses: mhausenblas/mkdocs-deploy-gh-pages@1.25
-        env:
-          GITHUB_TOKEN: ${{ steps.generate-token.outputs.token }}
-          CUSTOM_DOMAIN: kube-media.dev
-          CONFIG_FILE: mkdocs.yml
-          EXTRA_PACKAGES: build-base
-          REQUIREMENTS: requirements.txt
+        run: |
+          mkdir -p /tmp/kube-media
+          cp -r site/* /tmp/kube-media
+          git stash
+          git checkout gh-pages
+          if [ -f "index.yaml" ]; then
+            cp -r index.yaml /tmp/kube-media
+          fi
+          cd /tmp/kube-media
+          git init
+          git config user.name "kube-media[bot]"
+          git config user.email "kube-media[bot]@users.noreply.github.com"
+          remote_repo="https://x-access-token:${GITHUB_TOKEN}@github.com/kube-media/kube-media.git"
+          git remote add origin $remote_repo
+          git add .
+          git commit -m "chore: Auto-update website"
+          git push origin gh-pages --force
