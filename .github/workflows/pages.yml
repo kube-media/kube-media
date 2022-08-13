@@ -46,6 +46,8 @@ jobs:
           git config user.email "kube-media[bot]@users.noreply.github.com"
           
           git clone https://x-access-token:${GITHUB_TOKEN}@github.com/kube-media/kube-media.git /tmp/kube-media
+          cd /tmp/kube-media
+          git fetch --all
           git checkout -b gh-pages origin/gh-pages
           cp -r $GITHUB_WORKSPACE/site/* /tmp/kube-media/
 
