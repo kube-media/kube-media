@@ -12,11 +12,6 @@
   "helmv3": {
     "fileMatch": ["charts/.+/Chart\\.yaml$"]
   },
-  "regexManagers": [
-    {
-      
-    }
-  ],
   "packageRules": [
     {
       "matchDatasources": ["helm"],
