@@ -41,6 +41,7 @@ jobs:
       - name: Deploy
         if: github.ref == 'refs/heads/main'
         run: |
+          git config --global --add safe.directory "$GITHUB_WORKSPACE"
           mkdir -p /tmp/kube-media
           cp -r site/* /tmp/kube-media
           git stash
@@ -49,11 +50,15 @@ jobs:
             cp -r index.yaml /tmp/kube-media
           fi
           cd /tmp/kube-media
+          echo "kube-media.dev" > CNAME
           git init
           git config user.name "kube-media[bot]"
           git config user.email "kube-media[bot]@users.noreply.github.com"
-          remote_repo="https://x-access-token:${GITHUB_TOKEN}@github.com/kube-media/kube-media.git"
-          git remote add origin $remote_repo
+          git remote add origin https://x-access-token:${GITHUB_TOKEN}@github.com/kube-media/kube-media.git
           git add .
           git commit -m "chore: Auto-update website"
+          git push -f origin gh-pages
           git push origin gh-pages --force
+        env:
+          GITHUB_TOKEN: ${{ steps.generate-token.outputs.token }}
+          GITHUB_WORKSPACE: ${{ github.workspace }}
