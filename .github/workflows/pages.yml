@@ -52,7 +52,7 @@ jobs:
           cp -r $GITHUB_WORKSPACE/site/* /tmp/kube-media/
 
           git add .
-          git commit -m "chore: Auto-update website"
+          git commit -m "chore: Auto-update website [skip ci]"
           git push origin gh-pages --force
         env:
           GITHUB_TOKEN: ${{ steps.generate-token.outputs.token }}
