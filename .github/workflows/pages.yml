@@ -45,6 +45,7 @@ jobs:
           mkdir -p /tmp/kube-media
           cp -r site/* /tmp/kube-media
           git stash
+          git fetch --all
           git checkout -b gh-pages origin/gh-pages
           if [ -f "index.yaml" ]; then
             cp -r index.yaml /tmp/kube-media
