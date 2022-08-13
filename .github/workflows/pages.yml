@@ -61,4 +61,3 @@ jobs:
           git push origin gh-pages --force
         env:
           GITHUB_TOKEN: ${{ steps.generate-token.outputs.token }}
-          GITHUB_WORKSPACE: ${{ github.workspace }}
