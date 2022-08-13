@@ -58,6 +58,6 @@ jobs:
           git remote add origin https://x-access-token:${GITHUB_TOKEN}@github.com/kube-media/kube-media.git
           git add .
           git commit -m "chore: Auto-update website"
-          git push origin gh-pages --force
+          git push -u origin gh-pages --force
         env:
           GITHUB_TOKEN: ${{ steps.generate-token.outputs.token }}
