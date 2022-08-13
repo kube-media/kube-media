@@ -1,39 +1,97 @@
 site_name: Kube Media
+site_url: https://kube-media.dev
+site_author: Nick Pratley
+site_tagline: Build a highly-available, scalable, and customizable media platform with your favourite media apps.
+site_description: A set of highly opinionated helm charts
+copyright: Copyright &copy; 2022 Nick Pratley
+
+
 repo_url: https://github.com/kube-media/kube-media
 repo_name: kube-media/kube-media
 
 plugins:
-  - search
+  - search:
+      separator: '[\s\u200b\-,:!=\[\]()"/]+|\.(?!\d)|&[lg]t;|(?!\b)(?=[A-Z][a-z])'
+  - minify:
+      minify_html: true
+  - git-revision-date-localized:
+      enable_creation_date: true
+      type: timeago
+  - git-committers:
+      repository: kube-media/kube-media
+      token: !ENV GH_TOKEN
 
 theme:
   name: material
+  custom_dir: docs/overrides
+
+  include_search_page: false
+  search_index_only: true
   features:
-    - navigation.instant
-    - navigation.tracking
-    - navigation.tabs
-    - navigation.sections
+    - content.code.annotate
+    # - content.tabs.link
+    - content.tooltips
+    # - header.autohide
     - navigation.expand
+    - navigation.indexes
+    - navigation.instant
+    # - navigation.prune
+    - navigation.sections
+    - navigation.tabs
+    # - navigation.tabs.sticky
     - navigation.top
+    - navigation.tracking
+    - search.highlight
+    - search.share
+    - search.suggest
+    - toc.follow
+    # - toc.integrate
+
   palette:
-    # Palette toggle for light mode
-    - scheme: default
+
+    - media: "(prefers-color-scheme)"
+      toggle:
+        icon: material/brightness-auto
+        name: Switch to light mode
+
+    - media: "(prefers-color-scheme: light)"
+      scheme: default
+      primary: indigo
+      accent: indigo
       toggle:
         icon: material/brightness-7
         name: Switch to dark mode
 
-    # Palette toggle for dark mode
-    - scheme: slate
+    - media: "(prefers-color-scheme: dark)"
+      scheme: slate
+      primary: indigo
+      accent: indigo
       toggle:
         icon: material/brightness-4
-        name: Switch to light mode
+        name: Switch to system preference
+
 
 extra:
-  version:
-    provider: mike
+  analytics:
+    provider: google
+    property: G-KFB27ZHR9L
+  feedback:
+    title: Was this page helpful?
+    ratings:
+      - icon: material/emoticon-happy-outline
+        name: This page was helpful
+        data: 1
+        note: Thanks for your feedback!
+      - icon: material/emoticon-sad-outline
+        name: This page could be improved
+        data: 0
+        note: Thanks for your feedback!
 
   social:
     - icon: fontawesome/brands/github
       link: https://github.com/kube-media/kube-media
+    - icon: fontawesome/brands/twitter
+      link: https://twitter.com/nicko170
 
 
   consent:
@@ -43,3 +101,49 @@ extra:
       as to measure the effectiveness of our documentation and whether users
       find what they're searching for. With your consent, you're helping us to
       make our documentation better.
+
+markdown_extensions:
+  - abbr
+  - admonition
+  - attr_list
+  - def_list
+  - footnotes
+  - md_in_html
+  - toc:
+      permalink: true
+  - pymdownx.arithmatex:
+      generic: true
+  - pymdownx.betterem:
+      smart_enable: all
+  - pymdownx.caret
+  - pymdownx.details
+  - pymdownx.emoji:
+      emoji_generator: !!python/name:materialx.emoji.to_svg
+      emoji_index: !!python/name:materialx.emoji.twemoji
+  - pymdownx.highlight:
+      anchor_linenums: true
+  - pymdownx.inlinehilite
+  - pymdownx.keys
+  - pymdownx.magiclink:
+      repo_url_shorthand: true
+      user: squidfunk
+      repo: mkdocs-material
+  - pymdownx.mark
+  - pymdownx.smartsymbols
+  - pymdownx.superfences:
+      custom_fences:
+        - name: mermaid
+          class: mermaid
+          format: !!python/name:pymdownx.superfences.fence_code_format
+  - pymdownx.tabbed:
+      alternate_style: true
+  - pymdownx.tasklist:
+      custom_checkbox: true
+  - pymdownx.tilde
+
+nav:
+  - Home: index.md
+  - About: about.md
+
+  - Installation: installation.md
+  - Configuration: configuration.md
