@@ -45,7 +45,7 @@ jobs:
           mkdir -p /tmp/kube-media
           cp -r site/* /tmp/kube-media
           git stash
-          git checkout gh-pages
+          git checkout -b gh-pages origin/gh-pages
           if [ -f "index.yaml" ]; then
             cp -r index.yaml /tmp/kube-media
           fi
@@ -57,7 +57,6 @@ jobs:
           git remote add origin https://x-access-token:${GITHUB_TOKEN}@github.com/kube-media/kube-media.git
           git add .
           git commit -m "chore: Auto-update website"
-          git push -f origin gh-pages
           git push origin gh-pages --force
         env:
           GITHUB_TOKEN: ${{ steps.generate-token.outputs.token }}
