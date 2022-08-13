@@ -47,9 +47,11 @@ jobs:
         run: pip install -r requirements.txt
 
       - name: Install Insiders
-        run: pip install git+https://${GH_TOKEN}@github.com/kube-media/mkdocs-material-insiders.git
+        run: |
+          git clone --depth 1 https://${GH_TOKEN}@github.com/kube-media/mkdocs-material-insiders.git
+          pip install -e mkdocs-material-insiders
         env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_TOKEN: ${{ steps.generate-token.outputs.token }}
 
       - name: Build website
         run: mkdocs build --strict
