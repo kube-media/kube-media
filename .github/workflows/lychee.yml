@@ -16,6 +16,7 @@ jobs:
         with:
           app_id: ${{ secrets.KUBE_MEDIA_APP_ID }}
           private_key: ${{ secrets.KUBE_MEDIA_APP_PRIVATE_KEY }}
+
       - uses: actions/checkout@v3
         with:
           token: ${{ steps.generate-token.outputs.token }}

@@ -15,43 +15,35 @@ jobs:
   build:
     runs-on: ubuntu-latest
     steps:
+      - name: Generate Token
+        uses: tibdex/github-app-token@v1
+        id: generate-token
+        with:
+          app_id: ${{ secrets.KUBE_MEDIA_APP_ID }}
+          private_key: ${{ secrets.KUBE_MEDIA_APP_PRIVATE_KEY }}
+
       - uses: actions/checkout@v3
+        with:
+          token: ${{ steps.generate-token.outputs.token }}
+
       - name: Setup Python ${{ env.PYTHON_VERSION }}
         uses: actions/setup-python@v4
         with:
           python-version: ${{ env.PYTHON_VERSION }}
           cache: 'pip'
+
       - name: Install Python dependencies
         run: pip install -r requirements.txt
-      # - uses: actions/cache@v3
-      #   with:
-      #     key: ${{ github.ref }}
-      #     path: .cache
-      - name: Setup Pages
-        id: pages
-        uses: actions/configure-pages@v1
 
       - name: Build website
         run: mkdocs build
 
-      - name: Upload artifact
-        uses: actions/upload-pages-artifact@v1
-        with:
-          path: ./site
-
-  # Deployment job
-  deploy:
-    needs: build
-    if: github.ref == 'refs/heads/main'
-    # Grant GITHUB_TOKEN the permissions required to make a Pages deployment
-    permissions:
-      pages: write # to deploy to Pages
-      id-token: write # to verify the deployment originates from an appropriate source
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
-    runs-on: ubuntu-latest
-    steps:
-      - name: Deploy to GitHub Pages
-        id: deployment
-        uses: actions/deploy-pages@v1
+      - name: Deploy
+        if: github.ref == 'refs/heads/main'
+        uses: mhausenblas/mkdocs-deploy-gh-pages@1.25
+        env:
+          GITHUB_TOKEN: ${{ steps.generate-token.outputs.token }}
+          CUSTOM_DOMAIN: kube-media.dev
+          CONFIG_FILE: mkdocs.yml
+          EXTRA_PACKAGES: build-base
+          REQUIREMENTS: requirements.txt
