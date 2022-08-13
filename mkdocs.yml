@@ -1,0 +1,45 @@
+site_name: Kube Media
+repo_url: https://github.com/kube-media/kube-media
+repo_name: kube-media/kube-media
+
+plugins:
+  - search
+
+theme:
+  name: material
+  features:
+    - navigation.instant
+    - navigation.tracking
+    - navigation.tabs
+    - navigation.sections
+    - navigation.expand
+    - navigation.top
+  palette:
+    # Palette toggle for light mode
+    - scheme: default
+      toggle:
+        icon: material/brightness-7
+        name: Switch to dark mode
+
+    # Palette toggle for dark mode
+    - scheme: slate
+      toggle:
+        icon: material/brightness-4
+        name: Switch to light mode
+
+extra:
+  version:
+    provider: mike
+
+  social:
+    - icon: fontawesome/brands/github
+      link: https://github.com/kube-media/kube-media
+
+
+  consent:
+    title: Cookie consent
+    description: >-
+      We use cookies to recognize your repeated visits and preferences, as well
+      as to measure the effectiveness of our documentation and whether users
+      find what they're searching for. With your consent, you're helping us to
+      make our documentation better.

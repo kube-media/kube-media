@@ -1,0 +1,38 @@
+name: Check markdown links (Lychee)
+
+on:
+  repository_dispatch:
+  workflow_dispatch:
+  # schedule:
+  #   - cron: "0 0 * * 1"  # Every Monday
+
+jobs:
+  linkChecker:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Generate Token
+        uses: tibdex/github-app-token@v1
+        id: generate-token
+        with:
+          app_id: ${{ secrets.KUBE_MEDIA_APP_ID }}
+          private_key: ${{ secrets.KUBE_MEDIA_APP_PRIVATE_KEY }}
+      - uses: actions/checkout@v3
+        with:
+          token: ${{ steps.generate-token.outputs.token }}
+
+      - name: Link Checker
+        uses: lycheeverse/lychee-action@v1.5.1
+        id: lychee
+        with:
+          args: '--accept 200,204,429 --verbose --no-progress content/'
+        env:
+          GITHUB_TOKEN: ${{ steps.generate-token.outputs.token }}
+
+      - name: Create Issue From File
+        if: ${{ steps.lychee.outputs.exit_code != 0 }}
+        uses: peter-evans/create-issue-from-file@v4
+        with:
+          token: ${{ steps.generate-token.outputs.token }}
+          title: Link Checker Report
+          content-filepath: ./lychee/out.md
+          labels: lychee
