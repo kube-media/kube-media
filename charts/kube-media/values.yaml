@@ -55,7 +55,7 @@ lidarr:
   enabled: false
   image:
     repository: ghcr.io/k8s-at-home/lidarr
-    tag: v1.0.2.2590
+    tag: v1.0.2.2592
     pullPolicy: IfNotPresent
   container:
     nodeSelector: { }
@@ -80,7 +80,7 @@ tautulli:
   enabled: false
   image:
     repository: ghcr.io/k8s-at-home/tautulli
-    tag: v2.10.3
+    tag: v2.10.4
     pullPolicy: IfNotPresent
   container:
     nodeSelector: { }
@@ -105,7 +105,7 @@ prowlarr:
   enabled: false
   image:
     repository: ghcr.io/k8s-at-home/prowlarr
-    tag: v0.4.0.1801
+    tag: v0.4.0.1802
     pullPolicy: IfNotPresent
   container:
     nodeSelector: { }
@@ -155,7 +155,7 @@ transmission:
   enabled: false
   image:
     repository: linuxserver/transmission
-    tag: 3.00-r5-ls131
+    tag: 3.00-r5-ls135
     pullPolicy: IfNotPresent
   container:
     nodeSelector: { }
@@ -194,7 +194,7 @@ sabnzbd:
   enabled: false
   image:
     repository: ghcr.io/k8s-at-home/sabnzbd
-    tag: v3.6.0
+    tag: v3.6.1
     pullPolicy: IfNotPresent
 
   container:
@@ -228,7 +228,7 @@ plex:
   enabled: false
   image:
     repository: plexinc/pms-docker
-    tag: 1.28.0.5999-97678ded3
+    tag: 1.28.2.6151-914ddd2b3
     pullPolicy: IfNotPresent
 
   extraVolumes: [ ]
@@ -298,7 +298,7 @@ overseerr:
   enabled: false
   image:
     repository: ghcr.io/sct/overseerr
-    tag: b33956e6b85b2c2fc12e23951c06f36e009fb627
+    tag: 1.30.0
     pullPolicy: IfNotPresent
   container:
     nodeSelector: { }
