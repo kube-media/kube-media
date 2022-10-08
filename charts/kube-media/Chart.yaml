@@ -1,5 +1,5 @@
 apiVersion: v2
-appVersion: 0.0.1
+appVersion: 1.29.0.6244-819d3678c
 kubeVersion: ">=1.16.0-0"
 home: https://kube-media.dev
 sources:
