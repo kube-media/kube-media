@@ -30,7 +30,7 @@ sonarr:
   enabled: false
   image:
     repository: ghcr.io/onedr0p/sonarr
-    tag: v3.0.9.1549
+    tag: 3.0.9.1549
     pullPolicy: IfNotPresent
   container:
     nodeSelector: { }
@@ -55,7 +55,7 @@ lidarr:
   enabled: false
   image:
     repository: ghcr.io/onedr0p/lidarr
-    tag: v1.0.2.2592
+    tag: 1.0.2.2592
     pullPolicy: IfNotPresent
   container:
     nodeSelector: { }
@@ -80,7 +80,7 @@ tautulli:
   enabled: false
   image:
     repository: ghcr.io/onedr0p/tautulli
-    tag: v2.10.5
+    tag: 2.10.5
     pullPolicy: IfNotPresent
   container:
     nodeSelector: { }
@@ -130,7 +130,7 @@ radarr:
   enabled: false
   image:
     repository: ghcr.io/onedr0p/radarr
-    tag: v4.2.4.6635
+    tag: 4.2.4.6635
     pullPolicy: IfNotPresent
   container:
     nodeSelector: { }
@@ -193,7 +193,7 @@ sabnzbd:
   enabled: false
   image:
     repository: ghcr.io/onedr0p/sabnzbd
-    tag: v3.7.0
+    tag: 3.7.0
     pullPolicy: IfNotPresent
 
   container:
