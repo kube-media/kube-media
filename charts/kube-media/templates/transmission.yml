@@ -99,6 +99,10 @@ spec:
         {{- include "kube-media.selectorLabels" . | nindent 8 }}
         app: transmission
     spec:
+      dnsConfig:
+        options:
+          - name: ndots
+            value: "1"
       initContainers:
         - name: config-transmission
           image: docker.io/ubuntu:groovy

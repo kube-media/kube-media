@@ -334,6 +334,10 @@ spec:
         {{- include "kube-media.selectorLabels" . | nindent 8 }}
         app: sabnzbd
     spec:
+      dnsConfig:
+        options:
+          - name: ndots
+            value: "1"
       initContainers:
         - name: config-sabnzbd
           image: docker.io/ubuntu:groovy

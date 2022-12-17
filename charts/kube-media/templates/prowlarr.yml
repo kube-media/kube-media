@@ -74,6 +74,10 @@ spec:
           securityContext:
             runAsUser: {{ .Values.general.puid }}
             runAsGroup: {{ .Values.general.pgid }}
+      dnsConfig:
+        options:
+          - name: ndots
+            value: "1"
       volumes:
         {{ if not .Values.general.storage.customVolume }}
         - name: media-volume
