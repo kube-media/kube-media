@@ -2,6 +2,36 @@ apiVersion: v1
 entries:
   kube-media:
   - apiVersion: v2
+    appVersion: 0.2.0
+    created: "2022-12-17T04:51:17.373753704Z"
+    description: Kube Media - A highly opinionated Kubernetes media server
+    digest: e7352ad835647e2977410aa976f3d90a28a33e890681e6c5ca4b5f0d16fe1d48
+    home: https://kube-media.dev
+    keywords:
+    - kube-media
+    - Plex
+    - Sonarr
+    - Radarr
+    - Lidarr
+    - Prowlarr
+    - Overseerr
+    - sabnzbd
+    - Transmission
+    - Tautulli
+    kubeVersion: '>=1.16.0-0'
+    maintainers:
+    - email: nick@npratley.net
+      name: Nick Pratley
+      url: https://npratley.net
+    name: kube-media
+    sources:
+    - https://github.com/kube-media/kube-media
+    - https://kube-media.dev
+    type: application
+    urls:
+    - https://github.com/kube-media/kube-media/releases/download/kube-media-0.2.0/kube-media-0.2.0.tgz
+    version: 0.2.0
+  - apiVersion: v2
     appVersion: 0.0.1
     created: "2022-09-21T23:55:40.952477917Z"
     description: Kube Media - A highly opinionated Kubernetes media server
@@ -61,4 +91,4 @@ entries:
     urls:
     - https://github.com/kube-media/kube-media/releases/download/kube-media-0.0.5/kube-media-0.0.5.tgz
     version: 0.0.5
-generated: "2022-09-21T23:55:40.952649116Z"
+generated: "2022-12-17T04:51:17.373765605Z"
