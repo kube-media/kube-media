@@ -140,7 +140,6 @@ radarr:
     port: 7878
     nodePort:
     extraLBService: false
-    # Defines an additional LB service, requires cloud provider service or MetalLB 
 
   ingress:
     enabled: true

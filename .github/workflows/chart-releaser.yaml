@@ -60,7 +60,7 @@ jobs:
         id: create-commit
         uses: stefanzweifel/git-auto-commit-action@v4
         with:
-          file_pattern: charts/**/
+          file_pattern: charts/**
           commit_message: "chore: Auto-update chart README [skip ci]"
           commit_user_name: kube-media[bot]
           commit_user_email: kube-media[bot]@users.noreply.github.com
